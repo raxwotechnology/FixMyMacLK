@@ -1,0 +1,235 @@
+.track-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.track-modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.track-modal-content.dark {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+.track-usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.track-usage-table th, .track-usage-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.track-usage-table th {
+  background-color: #f1f1f1;
+}
+
+.track-usage-table.dark th,
+.track-usage-table.dark td {
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.track-usage-table.dark th {
+  background-color: #333;
+}
+
+.close-track-modal-btn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.close-track-modal-btn:hover {
+  background-color: #0056b3;
+}
+
+
+
+
+/* Action Menu Button Base Styles */
+.action-menu button {
+  background: #fff;
+  color: #333;
+  border: none;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  margin: 4px 0;
+  width: 100%;
+  text-align: left;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Space between icon and text */
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+/* Hover State - Light Mode */
+.action-menu button:hover {
+  background: #f5f5f5;
+  color: #000;
+  transform: translateY(-1px);
+}
+
+/* Focus State (Accessibility) */
+.action-menu button:focus {
+  background: #e9e9e9;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+}
+
+/* Active Pressed State */
+.action-menu button:active {
+  transform: translateY(0);
+  background: #e0e0e0;
+}
+
+/* Dark Mode Support */
+.dark .action-menu button {
+  background: #2d2d2d;
+  color: #e6e6e6;
+}
+
+.dark .action-menu button:hover {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.dark .action-menu button:focus {
+  background: #444;
+  box-shadow: 0 0 0 2px rgba(0, 170, 255, 0.4);
+}
+
+.dark .action-menu button:active {
+  background: #333;
+}
+
+/* Overlay for Closing Menu on Click Outside */
+.action-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  z-index: 9;
+  pointer-events: none; /* 👈 Allows scrolling */
+}
+
+/* Icon Styles */
+
+/* Large Icons (Edit, Delete) */
+.p-edit-btn-icon,
+.p-delete-btn-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+/* Small Icons (View, Bill, etc.) */
+.p-view-btn-icon,
+.p-bill-btn-icon,
+.p-job-bill-btn-icon,
+.p-select-btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+/* Optional: Add hover effect to icons via parent button */
+.action-menu button:hover .p-edit-btn-icon,
+.action-menu button:hover .p-delete-btn-icon,
+.action-menu button:hover .p-view-btn-icon {
+  opacity: 1;
+}
+
+
+.track-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.track-modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.track-modal-content.dark {
+  background: #2d2d2d;
+  color: white;
+}
+
+.track-usage-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+}
+
+.track-usage-table th,
+.track-usage-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.track-usage-table.dark th,
+.track-usage-table.dark td {
+  border-bottom: 1px solid #555;
+  color: white;
+}
+
+.close-track-modal-btn {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close-track-modal-btn:hover {
+  background-color: #0056b3;
+}
