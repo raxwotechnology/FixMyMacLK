@@ -15,7 +15,7 @@ import SalaryEdit from "./SalaryEdit";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/salaries";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/salaries";
 
 const SalaryList = ({ darkMode }) => {
   const [salaries, setSalaries] = useState([]);

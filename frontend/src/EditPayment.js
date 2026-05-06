@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./EditPayment.css";
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/payments";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/payments";
 
 const EditPayment = ({ payment, closeModal, darkMode }) => {
   // Top-level editable fields

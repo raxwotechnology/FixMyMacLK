@@ -23,7 +23,7 @@ const ReturnProductModal = ({ product, closeModal, darkMode}) => {
     }
 
     try {
-      const response = await fetch(`https://fixmymaclk-33hy.onrender.com/api/products/return/${product._id}`, {
+      const response = await fetch(`https://fixmymaclk-2kww.onrender.com/api/products/return/${product._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ returnQuantity, returnType }),

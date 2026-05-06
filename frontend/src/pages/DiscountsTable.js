@@ -5,8 +5,8 @@ import editicon from '../icon/edit.png';
 import deleteicon from '../icon/delete.png';
 import saveicon from '../icon/sucess.png';
 
-const API_URL = 'https://fixmymaclk-33hy.onrender.com/api/suppliers';
-const PRODUCT_API_URL = 'https://fixmymaclk-33hy.onrender.com/api/products';
+const API_URL = 'https://fixmymaclk-2kww.onrender.com/api/suppliers';
+const PRODUCT_API_URL = 'https://fixmymaclk-2kww.onrender.com/api/products';
 
 const CartDetailsTable = ({ supplierId, darkMode, refreshSuppliers }) => {
   const [items, setItems] = useState([]);

@@ -8,7 +8,7 @@ const InputHandler = ({ darkMode }) => {
   // Save action to backend
   const saveAction = async (action) => {
     try {
-      await axios.post('https://fixmymaclk-33hy.onrender.com/api/action', {
+      await axios.post('https://fixmymaclk-2kww.onrender.com/api/action', {
         userId: localStorage.getItem('userId') || 'user123', // Dynamic user ID
         action,
         position,

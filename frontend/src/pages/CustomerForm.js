@@ -33,7 +33,7 @@ const CustomerForm = ({ totalAmount, paymentType, onClose, darkMode, onSubmit })
     }
 
     try {
-      await axios.post("https://fixmymaclk-33hy.onrender.com/api/customers", customerData, {
+      await axios.post("https://fixmymaclk-2kww.onrender.com/api/customers", customerData, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },

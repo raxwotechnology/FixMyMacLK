@@ -4,7 +4,7 @@ import '../Products.css';
 import { FaUser, FaEdit, FaTrashAlt, FaPlusCircle, FaSignOutAlt, FaSignInAlt } from 'react-icons/fa';
 
 // Centralized activity log API
-const ACTIVITY_LOG_API = 'https://fixmymaclk-33hy.onrender.com/api/activity';
+const ACTIVITY_LOG_API = 'https://fixmymaclk-2kww.onrender.com/api/activity';
 
 // Entity labels for display
 const ENTITY_LABELS = {

@@ -4,8 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 
 
 // ✅ Change this to your actual Repair API base URL
-const REPAIR_API_URL = 'https://fixmymaclk-33hy.onrender.com/api/productsRepair'; // ← Confirm this endpoint
-const API_URL = 'https://fixmymaclk-33hy.onrender.com/api/suppliers';
+const REPAIR_API_URL = 'https://fixmymaclk-2kww.onrender.com/api/productsRepair'; // ← Confirm this endpoint
+const API_URL = 'https://fixmymaclk-2kww.onrender.com/api/suppliers';
 
 const CartForm = ({ supplier, closeModal, darkMode, refreshProducts }) => {
   const [items, setItems] = useState([{

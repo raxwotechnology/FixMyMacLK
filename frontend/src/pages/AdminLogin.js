@@ -20,7 +20,7 @@ const AdminLogin = ({ darkMode }) => {
     setError('');
 
     try {
-      const res = await axios.post('https://fixmymaclk-33hy.onrender.com/api/auth/login', formData);
+      const res = await axios.post('https://fixmymaclk-2kww.onrender.com/api/auth/login', formData);
       console.log('Admin login successful:', res.data);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('userId', res.data.user.id);

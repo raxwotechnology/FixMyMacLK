@@ -20,7 +20,7 @@ const UserLogin = ({ darkMode }) => {
     setError("");
 
     try {
-      const res = await axios.post("https://fixmymaclk-33hy.onrender.com/api/auth/login", {
+      const res = await axios.post("https://fixmymaclk-2kww.onrender.com/api/auth/login", {
         email: formData.email,
         password: formData.password,
       });

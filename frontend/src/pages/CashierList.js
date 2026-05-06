@@ -12,7 +12,7 @@ import cashiericon from '../icon/people.png';
 import CashierAdd from "./CashierAdd";
 import CashierEdit from "./CashierEdit";
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/cashiers";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/cashiers";
 
 const CashierList = ({ darkMode }) => {
   const [cashiers, setCashiers] = useState([]);

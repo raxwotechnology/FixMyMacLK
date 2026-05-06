@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import "./EditPayment.css";
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/payments";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/payments";
 
 const EditPayment = ({ payment, closeModal, darkMode }) => {
   const [formData, setFormData] = useState({
@@ -52,7 +52,7 @@ const EditPayment = ({ payment, closeModal, darkMode }) => {
           const stocks = {};
           for (const id of uniqueIds) {
             try {
-              const res = await fetch(`https://fixmymaclk-33hy.onrender.com/api/products/productitem/${id}`);
+              const res = await fetch(`https://fixmymaclk-2kww.onrender.com/api/products/productitem/${id}`);
               const prod = res.ok ? await res.json() : null;
               stocks[id] = prod?.stock || 0;
             } catch {

@@ -15,8 +15,8 @@ import EditPayment from '../EditPayment';
 import ReturnPayment from '../ReturnPayment';
 import { useMemo } from 'react'; // Make sure this is imported
 
-const API_URL = 'https://fixmymaclk-33hy.onrender.com/api/payments';
-const PAYMENT_WITH_CATEGORY_API_URL = 'https://fixmymaclk-33hy.onrender.com/api/payments/with-itemcodes';
+const API_URL = 'https://fixmymaclk-2kww.onrender.com/api/payments';
+const PAYMENT_WITH_CATEGORY_API_URL = 'https://fixmymaclk-2kww.onrender.com/api/payments/with-itemcodes';
 
 const PaymentTable = ({ darkMode }) => {
   const [payments, setPayments] = useState([]);

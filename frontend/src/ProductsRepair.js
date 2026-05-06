@@ -24,9 +24,9 @@ import { faFile, faFilePdf, faFileExcel, faSearch, faPlus, faTimes, faHistory } 
 import ChangeHistory from './components/ChangeHistory';
 
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/productsRepair";
-const PRODUCT_API_URL = "https://fixmymaclk-33hy.onrender.com/api/product-uploads";
-const JOB_API = 'https://fixmymaclk-33hy.onrender.com/api/productsRepair';
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/productsRepair";
+const PRODUCT_API_URL = "https://fixmymaclk-2kww.onrender.com/api/product-uploads";
+const JOB_API = 'https://fixmymaclk-2kww.onrender.com/api/productsRepair';
 
 // Add flattenLogs function directly here:
 function flattenLogs(data, entityType, entityIdField, entityNameField) {

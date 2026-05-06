@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/maintenance";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/maintenance";
 
 const MaintenanceList = ({ darkMode }) => {
   const [maintenanceRecords, setMaintenanceRecords] = useState([]);

@@ -11,7 +11,7 @@ import editicon from "../icon/edit.png";
 import deleteicon from "../icon/delete.png";
 import attendlisticon from "../icon/marking.png";
 
-const API_URL = "https://fixmymaclk-33hy.onrender.com/api/attendance";
+const API_URL = "https://fixmymaclk-2kww.onrender.com/api/attendance";
 
 const CashierAttendanceTable = ({ darkMode }) => {
   const [attendanceData, setAttendanceData] = useState([]);

@@ -8,8 +8,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSearch, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { useMemo } from "react";
 
-const API_URL = 'https://fixmymaclk-33hy.onrender.com/api/suppliers';
-const PRODUCT_API_URL = 'https://fixmymaclk-33hy.onrender.com/api/products';
+const API_URL = 'https://fixmymaclk-2kww.onrender.com/api/suppliers';
+const PRODUCT_API_URL = 'https://fixmymaclk-2kww.onrender.com/api/products';
 
 const CartDetailsTable = ({ supplierId, darkMode, refreshSuppliers }) => {
   const [items, setItems] = useState([]);
