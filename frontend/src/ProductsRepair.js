@@ -64,6 +64,10 @@ const ProductRepairList = ({ darkMode }) => {
   const [newService, setNewService] = useState({ serviceName: "", discountAmount: 0, description: "" });
   const [additionalServices, setAdditionalServices] = useState([]);
   const [newAdditionalService, setNewAdditionalService] = useState({ serviceName: "", serviceAmount: 0, description: "" });
+  const [creditNotes, setCreditNotes] = useState([]);
+  const [newCreditNote, setNewCreditNote] = useState({ noteText: "", amount: 0 });
+  const [editingCreditNoteId, setEditingCreditNoteId] = useState(null);
+  const [editingCreditNoteData, setEditingCreditNoteData] = useState({ noteText: "", amount: 0 });
   const [showActionMenu, setShowActionMenu] = useState(null);
   const [showReportOptions, setShowReportOptions] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -211,7 +215,7 @@ const ProductRepairList = ({ darkMode }) => {
   const paginatedProductsForModal = filteredProductsForModal.slice((productPage - 1) * productsPerPage, productPage * productsPerPage);
 
   // Filter and pagination logic
-  const statusFilters = ["All", "Pending", "In Progress", "Completed", "Cancelled", "Returned", "Completed-Collected", "Cancelled-Collected", "Returned-Collected"];
+  const statusFilters = ["All", "Pending", "In Progress", "Completed", "Cancelled", "Returned", "Credit-Repairs", "Completed-Collected", "Cancelled-Collected", "Returned-Collected"];
   const isRepairPaid = (repair) => {
     if (!repair.additionalServices || repair.additionalServices.length === 0) return true;
     return repair.additionalServices.every(service => service.isPaid);
@@ -533,6 +537,10 @@ const ProductRepairList = ({ darkMode }) => {
     setNewService({ serviceName: "", discountAmount: 0, description: "" }); // Reset new service form
     setAdditionalServices(repair.additionalServices || []); // Load existing additional services
     setNewAdditionalService({ serviceName: "", serviceAmount: 0, description: "" }); // Reset new additional service form
+    setCreditNotes(repair.creditNotes || []); // Load existing credit notes
+    setNewCreditNote({ noteText: "", amount: 0 }); // Reset new credit note form
+    setEditingCreditNoteId(null);
+    setEditingCreditNoteData({ noteText: "", amount: 0 });
     setShowViewModal(true);
   };
 
@@ -1400,6 +1408,131 @@ const ProductRepairList = ({ darkMode }) => {
   };
 
   // Add a new additional service
+  const handleAddCreditNote = async () => {
+    if (!newCreditNote.noteText.trim()) {
+      setError("Credit note text is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const noteToAdd = {
+        noteText: newCreditNote.noteText.trim(),
+        amount: parseFloat(newCreditNote.amount) || 0,
+      };
+
+      const response = await fetch(`${API_URL}/add-credit-note/${selectedRepair._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ creditNote: noteToAdd }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      setRepairs(repairs.map((r) => (r._id === responseData._id ? responseData : r)));
+      setSelectedRepair(responseData);
+      setCreditNotes(responseData.creditNotes || []);
+      setNewCreditNote({ noteText: "", amount: 0 });
+      setMessage("Credit note added successfully!");
+    } catch (err) {
+      console.error("Error adding credit note:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartEditCreditNote = (note) => {
+    setEditingCreditNoteId(note._id);
+    setEditingCreditNoteData({ noteText: note.noteText, amount: note.amount });
+  };
+
+  const handleCancelEditCreditNote = () => {
+    setEditingCreditNoteId(null);
+    setEditingCreditNoteData({ noteText: "", amount: 0 });
+  };
+
+  const handleSaveEditCreditNote = async (noteId) => {
+    if (!editingCreditNoteData.noteText.trim()) {
+      setError("Credit note text is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${API_URL}/edit-credit-note/${selectedRepair._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          noteId,
+          creditNote: {
+            noteText: editingCreditNoteData.noteText.trim(),
+            amount: parseFloat(editingCreditNoteData.amount) || 0,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      setRepairs(repairs.map((r) => (r._id === responseData._id ? responseData : r)));
+      setSelectedRepair(responseData);
+      setCreditNotes(responseData.creditNotes || []);
+      setEditingCreditNoteId(null);
+      setEditingCreditNoteData({ noteText: "", amount: 0 });
+      setMessage("Credit note updated successfully!");
+    } catch (err) {
+      console.error("Error editing credit note:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteCreditNote = async (noteId) => {
+    if (!window.confirm("Are you sure you want to delete this credit note?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${API_URL}/delete-credit-note/${selectedRepair._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ noteId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      setRepairs(repairs.map((r) => (r._id === responseData._id ? responseData : r)));
+      setSelectedRepair(responseData);
+      setCreditNotes(responseData.creditNotes || []);
+      setMessage("Credit note deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting credit note:", err);
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddAdditionalService = async () => {
     if (!newAdditionalService.serviceName.trim()) {
       setError("Service name is required");
@@ -3352,6 +3485,7 @@ const ProductRepairList = ({ darkMode }) => {
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
                   <option value="Returned">Returned</option>
+                  <option value="Credit-Repairs">Credit-Repairs</option>
                   <option value="Completed-Collected">Completed Collected</option>
                   <option value="Cancelled-Collected">Cancelled Collected</option>
                   <option value="Returned-Collected">Returned Collected</option>
@@ -4459,6 +4593,227 @@ const ProductRepairList = ({ darkMode }) => {
                 </div>
               )}
             </div>
+
+            {/* ✅ CREDIT NOTES SECTION - Only visible for Credit-Repairs status */}
+            {selectedRepair.repairStatus === "Credit-Repairs" && (
+              <div style={{
+                backgroundColor: darkMode ? "#2d3748" : "#fff7ed",
+                padding: "15px",
+                borderRadius: "5px",
+                marginBottom: "20px",
+                border: `1px solid ${darkMode ? "#4a5568" : "#fed7aa"}`
+              }}>
+                <h3 style={{
+                  fontSize: "18px",
+                  color: darkMode ? "#fbd38d" : "#9c4221",
+                  marginBottom: "10px",
+                  borderBottom: `2px solid ${darkMode ? "#666" : "#fed7aa"}`,
+                  paddingBottom: "5px"
+                }}>
+                  Credit Notes
+                </h3>
+
+                {/* Credit Notes List */}
+                {creditNotes.length > 0 ? (
+                  <div style={{ marginBottom: "15px" }}>
+                    {creditNotes.map((note, index) => (
+                      <div key={note._id || index} style={{
+                        backgroundColor: darkMode ? "#3a4556" : "#fff",
+                        padding: "10px",
+                        borderRadius: "4px",
+                        marginBottom: "8px",
+                        border: `1px solid ${darkMode ? "#4a5568" : "#fed7aa"}`
+                      }}>
+                        {editingCreditNoteId === note._id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                            <textarea
+                              value={editingCreditNoteData.noteText}
+                              onChange={(e) => setEditingCreditNoteData({ ...editingCreditNoteData, noteText: e.target.value })}
+                              rows={2}
+                              style={{
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                                backgroundColor: darkMode ? "#444" : "#fff",
+                                color: darkMode ? "#fff" : "#333",
+                                resize: "vertical"
+                              }}
+                            />
+                            <input
+                              type="number"
+                              step="0.01"
+                              placeholder="Amount"
+                              value={editingCreditNoteData.amount}
+                              onFocus={(e) => e.target.select()}
+                              onWheel={(e) => e.target.blur()}
+                              onChange={(e) => setEditingCreditNoteData({ ...editingCreditNoteData, amount: e.target.value })}
+                              style={{
+                                padding: "8px",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                                backgroundColor: darkMode ? "#444" : "#fff",
+                                color: darkMode ? "#fff" : "#333",
+                                width: "150px"
+                              }}
+                            />
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditCreditNote(note._id)}
+                                disabled={loading}
+                                style={{
+                                  background: "#38a169",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  padding: "6px 12px",
+                                  cursor: loading ? "not-allowed" : "pointer"
+                                }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditCreditNote}
+                                disabled={loading}
+                                style={{
+                                  background: "#a0aec0",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  padding: "6px 12px",
+                                  cursor: loading ? "not-allowed" : "pointer"
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ margin: 0, color: darkMode ? "#e2e8f0" : "#2d3748", whiteSpace: "pre-wrap" }}>
+                                {note.noteText}
+                              </p>
+                              <div style={{ display: "flex", gap: "15px", marginTop: "6px", fontSize: "13px", color: darkMode ? "#a0aec0" : "#718096" }}>
+                                {note.amount > 0 && (
+                                  <span style={{ fontWeight: "bold", color: darkMode ? "#fbd38d" : "#9c4221" }}>
+                                    Rs. {parseFloat(note.amount).toFixed(2)}
+                                  </span>
+                                )}
+                                <span>{note.addedBy || "system"}</span>
+                                {note.addedAt && <span>{new Date(note.addedAt).toLocaleString()}</span>}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditCreditNote(note)}
+                                disabled={loading}
+                                style={{
+                                  background: "#3182ce",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  width: "30px",
+                                  height: "30px",
+                                  cursor: loading ? "not-allowed" : "pointer"
+                                }}
+                                title="Edit credit note"
+                              >
+                                ✎
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCreditNote(note._id)}
+                                disabled={loading}
+                                style={{
+                                  background: "#e53e3e",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "4px",
+                                  width: "30px",
+                                  height: "30px",
+                                  cursor: loading ? "not-allowed" : "pointer"
+                                }}
+                                title="Delete credit note"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: darkMode ? "#a0aec0" : "#718096", marginBottom: "15px" }}>
+                    No credit notes added yet.
+                  </p>
+                )}
+
+                {/* Add New Credit Note Form */}
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  backgroundColor: darkMode ? "#3a4556" : "#fff",
+                  padding: "10px",
+                  borderRadius: "4px",
+                  border: `1px solid ${darkMode ? "#4a5568" : "#fed7aa"}`
+                }}>
+                  <textarea
+                    placeholder="Add a credit note..."
+                    value={newCreditNote.noteText}
+                    onChange={(e) => setNewCreditNote({ ...newCreditNote, noteText: e.target.value })}
+                    rows={2}
+                    style={{
+                      padding: "8px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      backgroundColor: darkMode ? "#444" : "#fff",
+                      color: darkMode ? "#fff" : "#333",
+                      resize: "vertical"
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Amount (optional)"
+                      value={newCreditNote.amount}
+                      onFocus={(e) => e.target.select()}
+                      onWheel={(e) => e.target.blur()}
+                      onChange={(e) => setNewCreditNote({ ...newCreditNote, amount: e.target.value })}
+                      style={{
+                        padding: "8px",
+                        borderRadius: "4px",
+                        border: "1px solid #ccc",
+                        backgroundColor: darkMode ? "#444" : "#fff",
+                        color: darkMode ? "#fff" : "#333",
+                        width: "180px"
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCreditNote}
+                      disabled={loading}
+                      style={{
+                        background: "#dd6b20",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        padding: "8px 16px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontWeight: "bold"
+                      }}
+                    >
+                      + Add Credit Note
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ✅ PAYMENT BREAKDOWN & CHANGE DETAILS */}
             {selectedRepair.paymentBreakdown && selectedRepair.paymentBreakdown.length > 0 && (

@@ -654,6 +654,187 @@ router.patch("/pay-service/:id", authMiddleware, getRepair, async (req, res) => 
   }
 });
 
+// PATCH: Add a credit note to a Credit-Repair
+router.patch("/add-credit-note/:id", authMiddleware, getRepair, async (req, res) => {
+  try {
+    const repair = req.repair;
+
+    const { creditNote } = req.body;
+
+    if (!creditNote) {
+      return res.status(400).json({ message: "creditNote object is required" });
+    }
+
+    if (!creditNote.noteText || creditNote.noteText.trim() === "") {
+      return res.status(400).json({ message: "Note text is required" });
+    }
+
+    const amount = creditNote.amount !== undefined && creditNote.amount !== null
+      ? parseFloat(creditNote.amount)
+      : 0;
+
+    if (isNaN(amount) || amount < 0) {
+      return res.status(400).json({ message: "Amount must be a valid positive number" });
+    }
+
+    const newNote = {
+      noteText: creditNote.noteText.trim(),
+      amount: amount,
+      addedBy: (req.user && (req.user.username || req.user.name)) || "system",
+      addedAt: new Date(),
+    };
+
+    if (!repair.creditNotes) {
+      repair.creditNotes = [];
+    }
+
+    repair.creditNotes.push(newNote);
+
+    try {
+      const updatedRepair = await repair.save();
+
+      const customer = updatedRepair.customerName || updatedRepair.customerPhone || 'Anonymous';
+      await logActivity({
+        req,
+        action: 'Edit',
+        resource: 'ProductRepair',
+        description: `Added credit note to repair job ${updatedRepair.repairInvoice} for "${customer}"`
+      });
+
+      return res.status(200).json(updatedRepair);
+    } catch (saveErr) {
+      console.error("Error saving repair with credit note:", saveErr);
+      return res.status(500).json({
+        message: `Error saving repair: ${saveErr.message}`,
+        error: saveErr.toString()
+      });
+    }
+  } catch (err) {
+    console.error("PATCH /add-credit-note error:", err);
+    return res.status(400).json({
+      message: err.message || "An error occurred while adding the credit note",
+      error: err.toString()
+    });
+  }
+});
+
+// PATCH: Edit an existing credit note on a Credit-Repair
+router.patch("/edit-credit-note/:id", authMiddleware, getRepair, async (req, res) => {
+  try {
+    const repair = req.repair;
+
+    const { noteId, creditNote } = req.body;
+
+    if (!noteId) {
+      return res.status(400).json({ message: "noteId is required" });
+    }
+
+    if (!creditNote) {
+      return res.status(400).json({ message: "creditNote object is required" });
+    }
+
+    if (!repair.creditNotes || !Array.isArray(repair.creditNotes)) {
+      return res.status(400).json({ message: "No credit notes found for this repair" });
+    }
+
+    const note = repair.creditNotes.id(noteId);
+    if (!note) {
+      return res.status(404).json({ message: `Credit note not found: ${noteId}` });
+    }
+
+    if (creditNote.noteText !== undefined) {
+      if (creditNote.noteText.trim() === "") {
+        return res.status(400).json({ message: "Note text is required" });
+      }
+      note.noteText = creditNote.noteText.trim();
+    }
+
+    if (creditNote.amount !== undefined) {
+      const amount = parseFloat(creditNote.amount);
+      if (isNaN(amount) || amount < 0) {
+        return res.status(400).json({ message: "Amount must be a valid positive number" });
+      }
+      note.amount = amount;
+    }
+
+    try {
+      const updatedRepair = await repair.save();
+
+      const customer = updatedRepair.customerName || updatedRepair.customerPhone || 'Anonymous';
+      await logActivity({
+        req,
+        action: 'Edit',
+        resource: 'ProductRepair',
+        description: `Edited credit note in repair job ${updatedRepair.repairInvoice} for "${customer}"`
+      });
+
+      return res.status(200).json(updatedRepair);
+    } catch (saveErr) {
+      console.error("Error saving repair after editing credit note:", saveErr);
+      return res.status(500).json({
+        message: `Error saving repair: ${saveErr.message}`,
+        error: saveErr.toString()
+      });
+    }
+  } catch (err) {
+    console.error("PATCH /edit-credit-note error:", err);
+    return res.status(400).json({
+      message: err.message || "An error occurred while editing the credit note",
+      error: err.toString()
+    });
+  }
+});
+
+// PATCH: Delete a credit note from a Credit-Repair
+router.patch("/delete-credit-note/:id", authMiddleware, getRepair, async (req, res) => {
+  try {
+    const repair = req.repair;
+
+    const { noteId } = req.body;
+
+    if (!noteId) {
+      return res.status(400).json({ message: "noteId is required" });
+    }
+
+    if (!repair.creditNotes || !Array.isArray(repair.creditNotes)) {
+      return res.status(400).json({ message: "No credit notes found for this repair" });
+    }
+
+    const note = repair.creditNotes.id(noteId);
+    if (!note) {
+      return res.status(404).json({ message: `Credit note not found: ${noteId}` });
+    }
+
+    note.deleteOne();
+
+    try {
+      const updatedRepair = await repair.save();
+
+      const customer = updatedRepair.customerName || updatedRepair.customerPhone || 'Anonymous';
+      await logActivity({
+        req,
+        action: 'Edit',
+        resource: 'ProductRepair',
+        description: `Deleted a credit note from repair job ${updatedRepair.repairInvoice} for "${customer}"`
+      });
+
+      return res.status(200).json(updatedRepair);
+    } catch (saveErr) {
+      console.error("Error saving repair after deleting credit note:", saveErr);
+      return res.status(500).json({
+        message: `Error saving repair: ${saveErr.message}`,
+        error: saveErr.toString()
+      });
+    }
+  } catch (err) {
+    console.error("PATCH /delete-credit-note error:", err);
+    return res.status(400).json({
+      message: err.message || "An error occurred while deleting the credit note",
+      error: err.toString()
+    });
+  }
+});
+
 // Helper function to record changes
 async function recordChanges(repair, updates, changedBy, changeType) {
   const changes = [];
@@ -733,6 +914,7 @@ router.patch("/:id", authMiddleware, getRepair, async (req, res) => {
       "changeGiven",
       "completedAt", // ✅ ADD THIS
       "collectedAt",
+      "creditNotes",
     ];
 
     const updates = {};

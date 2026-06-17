@@ -743,6 +743,7 @@ const AddProductRepair = ({ closeModal, darkMode, onAddSuccess }) => {
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Credit-Repairs">Credit-Repairs</option>
               </select>
 
               <label className="repair-label">Additional Notes</label>

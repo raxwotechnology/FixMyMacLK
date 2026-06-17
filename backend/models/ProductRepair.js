@@ -81,6 +81,19 @@ const productRepairSchema = new mongoose.Schema({
   changeGiven: { type: Number, default: 0 }, // ✅ Must be present
   completedAt: { type: Date, },
   collectedAt: { type: Date, },
+  // Credit notes for Credit-Repairs
+  creditNotes: {
+    type: [
+      {
+        noteText: { type: String, required: true },
+        amount: { type: Number, required: false, default: 0 },
+        addedBy: { type: String, default: 'system' },
+        addedAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  },
+
   // Change history to track modifications
   changeHistory: [{
     field: { type: String, required: true },

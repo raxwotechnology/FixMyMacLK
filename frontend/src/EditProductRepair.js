@@ -525,6 +525,7 @@ const EditProductRepair = ({ repair, closeModal, darkMode }) => {
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Credit-Repairs">Credit-Repairs</option>
               </select>
 
               <label className="repair-label">ADDITIONAL NOTES</label>
