@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faFile, faFilePdf, faFileExcel, faSearch, faTimes, faChartSimple } from '@fortawesome/free-solid-svg-icons';
 import jsPDF from 'jspdf';
-import html2canvas from "html2canvas";
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import Highcharts from "highcharts";
@@ -136,6 +135,7 @@ const PaymentTable = ({ darkMode }) => {
 
     const invoiceNumber = paymentData.invoiceNumber || 'INV-0001';
     const invoiceNo = invoiceNumber.split('-')[1];
+    const paymentDate = paymentData.date ? new Date(paymentData.date).toLocaleDateString() : new Date().toLocaleDateString();
 
     const subtotal = items.reduce((sum, item) => sum + (item.totalAmount * item.quantity), 0);
     const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
@@ -147,8 +147,8 @@ const PaymentTable = ({ darkMode }) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Payment Receipt - ${invoiceNumber}</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
         <style>
           @page {
             size: 80mm 140mm;
@@ -256,6 +256,7 @@ const PaymentTable = ({ darkMode }) => {
         <div class="details">
           <div><strong>NAME:</strong> ${customerName}</div>
           <div><strong>CONTACT:</strong> ${contactNumber}</div>
+          <div><strong>DATE:</strong> ${paymentDate}</div>
         </div>
 
         <div class="divider"></div>
@@ -308,44 +309,114 @@ const PaymentTable = ({ darkMode }) => {
 
         <script type="text/javascript">
           function downloadPDF() {
+            const receiptData = ${JSON.stringify({
+    shopName, shopAddress, shopPhone, shopEmail,
+    invoiceNo, paymentMethod, customerName, contactNumber, paymentDate,
+    items: items.map(item => ({
+      quantity: item.quantity,
+      itemName: item.itemName,
+      category: item.category || '\u2014',
+      lineAmount: (item.price * item.quantity).toFixed(2),
+      discount: item.discount > 0 ? item.discount.toFixed(2) : null
+    })),
+    totalAmount: totalAmount.toFixed(2),
+    fileName: 'Receipt_' + invoiceNumber + '.pdf'
+  })};
+
             const { jsPDF } = window.jspdf;
+            // 80mm wide receipt, height grows with content
+            const pageWidth = 80;
+            const margin = 5;
+            const usableWidth = pageWidth - margin * 2;
+            let y = 8;
 
-            // Configure html2canvas
-            html2canvas(document.body, {
-              scale: 3,                    // High quality
-              useCORS: true,               // Load cross-origin images
-              logging: false,
-              backgroundColor: '#ffffff',
-              scrollY: -window.scrollY,    // Capture full body without scroll issues
-              width: document.body.scrollWidth,  // Force full width
-              height: document.body.scrollHeight,
-              windowWidth: document.body.scrollWidth,
-              windowHeight: document.body.scrollHeight
-            }).then(function(canvas) {
-              const imgData = canvas.toDataURL('image/png', 1.0);
+            // Estimate height first by counting item lines (2-3 lines per item)
+            const estimatedItemLines = receiptData.items.length * 2 + receiptData.items.filter(i => i.discount).length;
+            const estimatedHeight = 60 + estimatedItemLines * 4.2 + 20;
 
-              // Get actual rendered content dimensions in mm
-              const dpi = 96; // Assumed screen DPI (common default)
-              const mmToInch = 25.4;
-              const pxToMm = mmToInch / dpi;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [pageWidth, Math.max(estimatedHeight, 100)], compress: true });
 
-              const widthInPx = canvas.width;
-              const heightInPx = canvas.height;
+            doc.setFont('courier', 'bold');
+            doc.setFontSize(12);
+            doc.text(receiptData.shopName, pageWidth / 2, y, { align: 'center' });
+            y += 4.5;
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(7);
+            doc.text('YOUR TRUSTED REPAIR PARTNER', pageWidth / 2, y, { align: 'center' });
+            y += 4;
+            const addrLines = doc.splitTextToSize(receiptData.shopAddress, usableWidth);
+            doc.text(addrLines, pageWidth / 2, y, { align: 'center' });
+            y += addrLines.length * 3.2;
+            const phoneLine = 'Phone: ' + receiptData.shopPhone + ' / ' + receiptData.shopEmail;
+            const phoneLines = doc.splitTextToSize(phoneLine, usableWidth);
+            doc.text(phoneLines, pageWidth / 2, y, { align: 'center' });
+            y += phoneLines.length * 3.2 + 2;
 
-              const widthInMm = (widthInPx * pxToMm);
-              const heightInMm = (heightInPx * pxToMm);
+            function dashedLine() {
+              doc.setLineDashPattern([0.8, 0.8], 0);
+              doc.setDrawColor(0, 0, 0);
+              doc.line(margin, y, pageWidth - margin, y);
+              doc.setLineDashPattern([], 0);
+              y += 3.5;
+            }
+            dashedLine();
 
-              // Create PDF with exact size of content
-              const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: [widthInMm, heightInMm]  // Dynamic size to fit content
-              });
+            doc.setFont('courier', 'bold');
+            doc.setFontSize(8);
+            doc.text('INVOICE NO ' + receiptData.invoiceNo + ' - ' + receiptData.paymentMethod, pageWidth / 2, y, { align: 'center' });
+            y += 3.5;
+            dashedLine();
 
-              // Add image at full width and correct height
-              pdf.addImage(imgData, 'PNG', 0, 0, widthInMm, heightInMm);
-              pdf.save('Receipt_${invoiceNumber}.pdf');
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(7.5);
+            doc.text('NAME: ' + receiptData.customerName, margin, y); y += 3.5;
+            doc.text('CONTACT: ' + receiptData.contactNumber, margin, y); y += 3.5;
+            doc.text('DATE: ' + receiptData.paymentDate, margin, y); y += 3.5;
+            dashedLine();
+
+            doc.setFont('courier', 'bold');
+            doc.setFontSize(7);
+            doc.text('QTY', margin, y);
+            doc.text('DESCRIPTION', margin + 8, y);
+            doc.text('AMOUNT', pageWidth - margin, y, { align: 'right' });
+            y += 3;
+            dashedLine();
+
+            doc.setFont('courier', 'normal');
+            receiptData.items.forEach(item => {
+              doc.setFontSize(7.5);
+              doc.text(String(item.quantity), margin, y);
+              const nameLines = doc.splitTextToSize(item.itemName, 40);
+              doc.text(nameLines[0] || '', margin + 8, y);
+              doc.text('Rs. ' + item.lineAmount, pageWidth - margin, y, { align: 'right' });
+              y += 3.5;
+              doc.setFontSize(6);
+              doc.setTextColor(100, 100, 100);
+              doc.text('Category: ' + item.category, margin + 8, y);
+              doc.setTextColor(0, 0, 0);
+              y += 3.2;
+              if (item.discount) {
+                doc.setFontSize(7.5);
+                doc.text('Discount', margin + 8, y);
+                doc.text('Rs. ' + item.discount, pageWidth - margin, y, { align: 'right' });
+                y += 3.5;
+              }
             });
+            dashedLine();
+
+            doc.setFont('courier', 'bold');
+            doc.setFontSize(8.5);
+            doc.text('TOTAL: Rs. ' + receiptData.totalAmount, pageWidth - margin, y, { align: 'right' });
+            y += 3.5;
+            dashedLine();
+
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(6.5);
+            doc.text('Thank you for your business!', pageWidth / 2, y, { align: 'center' }); y += 3;
+            doc.text('Software by Exyplan Software', pageWidth / 2, y, { align: 'center' }); y += 3;
+            doc.text('Contact: 074 357 3323', pageWidth / 2, y, { align: 'center' });
+
+            doc.save(receiptData.fileName);
           }
         </script>
       </body>
@@ -384,8 +455,8 @@ const PaymentTable = ({ darkMode }) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>POS Bill - ${paymentData.invoiceNumber}</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
         <style>
           @media print {
             @page {
@@ -606,27 +677,141 @@ const PaymentTable = ({ darkMode }) => {
 
         <script type="text/javascript">
           function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const element = document.querySelector('.container');
-            html2canvas(element, {
-              scale: 2,
-              useCORS: true,
-              logging: false,
-              backgroundColor: '#ffffff'
-            }).then(function(canvas) {
-              const imgData = canvas.toDataURL('image/png');
-              const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4'
-              });
-              const imgProps = pdf.getImageProperties(imgData);
-              const pdfWidth = pdf.internal.pageSize.getWidth();
-              const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-              pdf.save('FullBill_${paymentData.invoiceNumber}.pdf');
-            });
+            const billData = ${JSON.stringify({
+    shopLogo: shopLogo || null,
+    shopName, shopAddress, shopPhone,
+    customerName, contactNumber, description,
+    currentDate,
+    invoiceNumber: paymentData.invoiceNumber || '',
+    paymentMethodLines: (Array.isArray(paymentData.paymentMethods) && paymentData.paymentMethods.length > 0)
+      ? paymentData.paymentMethods.map(pm => (pm.method + ': Rs. ' + Number(pm.amount || 0).toFixed(2)))
+      : [(paymentData.paymentMethod || 'Not Selected') + ': Rs. ' + Number(paymentData.totalAmount || 0).toFixed(2)],
+    items: items.map(item => ({
+      itemName: item.itemName || 'Unknown Item',
+      category: item.category || '\u2014',
+      quantity: item.quantity || 0,
+      price: (item.price || 0).toFixed(2),
+      discount: (typeof item.discount === 'number' ? item.discount : 0).toFixed(2),
+      total: ((item.price || 0) * (item.quantity || 0) - (typeof item.discount === 'number' ? item.discount : 0)).toFixed(2)
+    })),
+    subtotal: subtotal.toFixed(2),
+    totalDiscount: totalDiscount.toFixed(2),
+    totalAmount: totalAmount.toFixed(2),
+    paidAmount: paidAmount.toFixed(2),
+    balance: balance.toFixed(2),
+    fileName: 'FullBill_' + (paymentData.invoiceNumber || 'bill') + '.pdf'
+  })};
 
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 15;
+            let y = 18;
+
+            function finishAndAddLogoIfAny(callback) {
+              if (billData.shopLogo) {
+                const img = new Image();
+                img.onload = function () {
+                  try {
+                    const maxDim = 20;
+                    const ratio = Math.min(maxDim / img.width, maxDim / img.height);
+                    const w = img.width * ratio;
+                    const h = img.height * ratio;
+                    doc.addImage(billData.shopLogo, (pageWidth - w) / 2, y, w, h);
+                    y += h + 4;
+                  } catch (e) { /* ignore bad logo data */ }
+                  callback();
+                };
+                img.onerror = function () { callback(); };
+                img.src = billData.shopLogo;
+              } else {
+                callback();
+              }
+            }
+
+            finishAndAddLogoIfAny(function () {
+              // Header
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(18);
+              doc.text('Payment Receipt', pageWidth / 2, y, { align: 'center' });
+              y += 7;
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(10);
+              doc.setTextColor(90, 90, 90);
+              doc.text(billData.shopName, pageWidth / 2, y, { align: 'center' }); y += 5;
+              doc.text(billData.shopAddress, pageWidth / 2, y, { align: 'center' }); y += 5;
+              doc.text('Phone: ' + billData.shopPhone, pageWidth / 2, y, { align: 'center' }); y += 4;
+              doc.setDrawColor(51, 51, 51);
+              doc.setLineWidth(0.5);
+              doc.line(margin, y, pageWidth - margin, y);
+              y += 8;
+
+              // Details (two columns)
+              doc.setTextColor(20, 20, 20);
+              doc.setFontSize(10);
+              const leftX = margin;
+              const rightX = pageWidth / 2 + 5;
+              let leftY = y;
+              let rightY = y;
+
+              function fieldLine(x, yPos, label, value) {
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, x, yPos);
+                doc.setFont('helvetica', 'normal');
+                const lines = doc.splitTextToSize(String(value), 75);
+                doc.text(lines, x + 28, yPos);
+                return yPos + Math.max(5, lines.length * 4.5);
+              }
+
+              leftY = fieldLine(leftX, leftY, 'Customer:', billData.customerName);
+              leftY = fieldLine(leftX, leftY, 'Contact:', billData.contactNumber);
+              leftY = fieldLine(leftX, leftY, 'Description:', billData.description);
+
+              rightY = fieldLine(rightX, rightY, 'Date:', billData.currentDate);
+              rightY = fieldLine(rightX, rightY, 'Invoice:', billData.invoiceNumber);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Payment Method(s):', rightX, rightY);
+              rightY += 4.5;
+              doc.setFont('helvetica', 'normal');
+              billData.paymentMethodLines.forEach(line => {
+                doc.text('- ' + line, rightX + 2, rightY);
+                rightY += 4.5;
+              });
+
+              y = Math.max(leftY, rightY) + 4;
+
+              // Items table
+              doc.autoTable({
+                startY: y,
+                head: [['Item Name', 'Category', 'Quantity', 'Price', 'Discount', 'Total']],
+                body: billData.items.map(item => [
+                  item.itemName, item.category, String(item.quantity),
+                  'Rs. ' + item.price, 'Rs. ' + item.discount, 'Rs. ' + item.total
+                ]),
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+                headStyles: { fillColor: [242, 242, 242], textColor: [51, 51, 51], fontStyle: 'bold' },
+                styles: { fontSize: 9, cellPadding: 2 }
+              });
+              y = doc.lastAutoTable.finalY + 6;
+
+              // Totals box
+              if (y > 260) { doc.addPage(); y = 20; }
+              const boxHeight = 30;
+              doc.setDrawColor(221, 221, 221);
+              doc.setFillColor(249, 249, 249);
+              doc.rect(margin, y, pageWidth - margin * 2, boxHeight, 'FD');
+              let totalsLeftY = y + 7;
+              let totalsRightY = y + 7;
+              doc.setFontSize(10);
+              totalsLeftY = fieldLine(margin + 4, totalsLeftY, 'Subtotal:', 'Rs. ' + billData.subtotal);
+              totalsLeftY = fieldLine(margin + 4, totalsLeftY, 'Total Discount:', 'Rs. ' + billData.totalDiscount);
+              totalsLeftY = fieldLine(margin + 4, totalsLeftY, 'Total Amount:', 'Rs. ' + billData.totalAmount);
+              totalsRightY = fieldLine(rightX, totalsRightY, 'Paid Amount:', 'Rs. ' + billData.paidAmount);
+              totalsRightY = fieldLine(rightX, totalsRightY, 'Balance:', 'Rs. ' + billData.balance);
+
+              doc.save(billData.fileName);
+            });
           }
         </script>
       </body>

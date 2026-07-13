@@ -1917,8 +1917,8 @@ const ProductRepairList = ({ darkMode }) => {
       <html>
         <head>
           <title>Repair Bill</title>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
           <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -2028,7 +2028,7 @@ const ProductRepairList = ({ darkMode }) => {
               <p><strong>Phone:</strong> ${repair.customerPhone}</p>
               <p><strong>Device:</strong> ${repair.deviceType || repair.itemName}</p>
               <p><strong>Issue:</strong> ${repair.issueDescription}</p>
-              <p><strong>Date:</strong> ${new Date(repair.collectedAt).toLocaleDateString()}</p>
+              <p><strong>Date:</strong> ${(repair.collectedAt || repair.completedAt) ? new Date(repair.collectedAt || repair.completedAt).toLocaleDateString() : ''}</p>
             </div>
             <table>
               <thead>
@@ -2166,26 +2166,252 @@ const ProductRepairList = ({ darkMode }) => {
 
           <script type="text/javascript">
             function downloadPDF() {
+              const billData = ${JSON.stringify({
+    jobNumber: repair.repairInvoice || repair.repairCode || "",
+    customerName: repair.customerName || "",
+    customerPhone: repair.customerPhone || "",
+    device: repair.deviceType || repair.itemName || "",
+    issue: repair.issueDescription || "",
+    dateStr: (repair.collectedAt || repair.completedAt) ? new Date(repair.collectedAt || repair.completedAt).toLocaleDateString() : "",
+    repairCart: (repair.repairCart || []).map(i => ({ itemName: i.itemName, category: i.category, quantity: i.quantity, cost: i.cost })),
+    returnCart: (repair.returnCart || []).map(i => ({ itemName: i.itemName, category: i.category, quantity: i.quantity, cost: i.cost })),
+    cartDescription: repair.cartDescription || "",
+    cartTotal: (() => { try { return calculateCartTotal(repair.repairCart); } catch (e) { return "0.00"; } })(),
+    services: repair.services || [],
+    totalDiscountAmount: repair.totalDiscountAmount || 0,
+    totalRepairCost: (() => { try { return (calculateCartTotal(repair.repairCart) - (repair.totalDiscountAmount || 0)); } catch (e) { return 0; } })(),
+    totalReturnCost: repair.totalReturnCost || 0,
+    additionalServices: repair.additionalServices || [],
+    totalAdditionalServicesAmount: repair.totalAdditionalServicesAmount || 0,
+    isPending: repair.repairStatus === "Pending",
+    returnedAdditionalServices: repair.returnedadditionalServices || [],
+    rettotalAdditionalServicesAmount: repair.rettotalAdditionalServicesAmount || 0,
+    isPaid: isPaid,
+    grandTotal: (() => { try { return (calculateCartTotal(repair.repairCart) - (repair.totalDiscountAmount || 0) + (repair.totalAdditionalServicesAmount || 0)) || repair.totalRepairCost || 0; } catch (e) { return repair.totalRepairCost || 0; } })(),
+    returnedTotal: (repair.rettotalAdditionalServicesAmount || 0) + (repair.totalReturnCost || 0),
+    fileName: 'Repair_Bill_' + (repair.repairInvoice || repair.repairCode || 'bill') + '.pdf'
+  })};
+
               const { jsPDF } = window.jspdf;
-              const element = document.querySelector('.bill-container');
-              html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-              }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF({
-                  orientation: 'portrait',
-                  unit: 'mm',
-                  format: 'a4'
-                });
-                const imgProps = pdf.getImageProperties(imgData);
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save('Repair_Bill_${repair.repairInvoice || repair.repairCode}.pdf');
+              const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const margin = 15;
+              let y = 18;
+
+              // Header
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(18);
+              doc.text('Repair Bill', pageWidth / 2, y, { align: 'center' });
+              y += 7;
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(10);
+              doc.setTextColor(90, 90, 90);
+              doc.text('FixMyMacLk Pvt Ltd', pageWidth / 2, y, { align: 'center' }); y += 5;
+              doc.text('Unit 325, 3rd Floor, Jana Jaya City Mall, 10107', pageWidth / 2, y, { align: 'center' }); y += 5;
+              doc.text('Phone: (+94)77 220 0024 / (+94)77 357 3535', pageWidth / 2, y, { align: 'center' }); y += 4;
+              doc.setDrawColor(51, 51, 51);
+              doc.setLineWidth(0.5);
+              doc.line(margin, y, pageWidth - margin, y);
+              y += 8;
+
+              // Details
+              doc.setTextColor(20, 20, 20);
+              doc.setFontSize(11);
+              const details = [
+                ['Job Number:', billData.jobNumber],
+                ['Customer:', billData.customerName],
+                ['Phone:', billData.customerPhone],
+                ['Device:', billData.device],
+                ['Issue:', billData.issue],
+                ['Date:', billData.dateStr]
+              ];
+              details.forEach(([label, value]) => {
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, margin, y);
+                doc.setFont('helvetica', 'normal');
+                doc.text(String(value), margin + 32, y);
+                y += 6;
               });
+              y += 2;
+
+              // Repair cart table
+              const repairCart = billData.repairCart;
+              if (repairCart.length > 0) {
+                doc.autoTable({
+                  startY: y,
+                  head: [['Item Name', 'Category', 'Quantity', 'Cost']],
+                  body: repairCart.map(item => [item.itemName, item.category, String(item.quantity), 'Rs. ' + item.cost]),
+                  margin: { left: margin, right: margin },
+                  theme: 'grid',
+                  headStyles: { fillColor: [242, 242, 242], textColor: [51, 51, 51], fontStyle: 'bold' },
+                  styles: { fontSize: 9, cellPadding: 2 }
+                });
+                y = doc.lastAutoTable.finalY + 6;
+              }
+
+              // Return cart table
+              const returnCart = billData.returnCart;
+              if (returnCart.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text('Return Items', margin, y);
+                y += 3;
+                doc.autoTable({
+                  startY: y,
+                  head: [['Item Name', 'Category', 'Quantity', 'Cost']],
+                  body: returnCart.map(item => [item.itemName, item.category, String(item.quantity), 'Rs. ' + item.cost]),
+                  margin: { left: margin, right: margin },
+                  theme: 'grid',
+                  headStyles: { fillColor: [242, 242, 242], textColor: [51, 51, 51], fontStyle: 'bold' },
+                  styles: { fontSize: 9, cellPadding: 2 }
+                });
+                y = doc.lastAutoTable.finalY + 6;
+              }
+
+              // Product description
+              const cartDescription = billData.cartDescription;
+              if (cartDescription) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Product Description:', margin, y);
+                doc.setFont('helvetica', 'normal');
+                const descLines = doc.splitTextToSize(cartDescription, pageWidth - margin * 2 - 45);
+                doc.text(descLines, margin + 45, y);
+                y += Math.max(6, descLines.length * 5) + 2;
+              }
+
+              // Totals
+              doc.setDrawColor(200, 200, 200);
+              doc.line(margin, y, pageWidth - margin, y);
+              y += 6;
+              doc.setFontSize(10);
+
+              function totalLine(label, value) {
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, margin, y);
+                doc.text(String(value), pageWidth - margin, y, { align: 'right' });
+                y += 6;
+              }
+
+              totalLine('Cart Total:', 'Rs. ' + billData.cartTotal);
+
+              const services = billData.services;
+              if (services.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.text('Discounts:', margin, y);
+                y += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                services.forEach(s => {
+                  const line = '- ' + s.serviceName + ': Rs. ' + s.discountAmount + (s.description ? ' (' + s.description + ')' : '');
+                  doc.text(line, margin + 4, y);
+                  y += 5;
+                });
+                doc.setFontSize(10);
+                totalLine('Total Discount:', 'Rs. ' + billData.totalDiscountAmount);
+              }
+
+              totalLine('Total Repair Cost:', 'Rs. ' + billData.totalRepairCost);
+
+              if (billData.totalReturnCost > 0) {
+                totalLine('Total Return Items Amount:', 'Rs. ' + billData.totalReturnCost);
+              }
+
+              const additionalServices = billData.additionalServices;
+              if (additionalServices.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.text('Additional Services:', margin, y);
+                y += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                additionalServices.forEach(s => {
+                  const paidTag = !billData.isPending ? (s.isPaid ? ' [PAID]' : ' [UNPAID]') : '';
+                  const line = '- ' + s.serviceName + ': Rs. ' + s.serviceAmount + (s.description ? ' (' + s.description + ')' : '') + paidTag;
+                  if (s.isPaid) { doc.setTextColor(0, 128, 0); } else { doc.setTextColor(200, 0, 0); }
+                  doc.text(line, margin + 4, y);
+                  doc.setTextColor(20, 20, 20);
+                  y += 5;
+                });
+                doc.setFontSize(10);
+                totalLine('Total Additional Services:', 'Rs. ' + billData.totalAdditionalServicesAmount);
+              }
+
+              const returnedAdditionalServices = billData.returnedAdditionalServices;
+              if (billData.rettotalAdditionalServicesAmount && returnedAdditionalServices.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.text('Returned Additional Services:', margin, y);
+                y += 5;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(9);
+                returnedAdditionalServices.forEach(s => {
+                  const line = '- ' + s.serviceName + ': Rs. ' + s.serviceAmount + (s.description ? ' (' + s.description + ')' : '');
+                  doc.text(line, margin + 4, y);
+                  y += 5;
+                });
+                doc.setFontSize(10);
+              }
+
+              if (billData.rettotalAdditionalServicesAmount > 0) {
+                totalLine('Total Return Additional Services:', 'Rs. ' + billData.rettotalAdditionalServicesAmount);
+              }
+
+              y += 2;
+              doc.setDrawColor(200, 200, 200);
+              doc.line(margin, y, pageWidth - margin, y);
+              y += 7;
+              doc.setFontSize(13);
+              const isPaidFlag = billData.isPaid;
+              doc.setTextColor(isPaidFlag ? 0 : 200, isPaidFlag ? 128 : 0, 0);
+              doc.setFont('helvetica', 'bold');
+              doc.text((isPaidFlag ? 'PAID TOTAL: Rs. ' : 'UNPAID TOTAL: Rs. ') + billData.grandTotal, margin, y);
+              y += 8;
+
+              const returnedTotal = billData.returnedTotal;
+              if (returnedTotal > 0) {
+                doc.setTextColor(isPaidFlag ? 0 : 200, isPaidFlag ? 128 : 0, 0);
+                doc.text('TOTAL RETURNED AMOUNT: Rs. ' + returnedTotal, margin, y);
+                y += 8;
+              }
+              doc.setTextColor(20, 20, 20);
+
+              // Warranty notice
+              if (y > 240) { doc.addPage(); y = 20; }
+              doc.setFillColor(249, 249, 249);
+              doc.setDrawColor(0, 123, 255);
+              doc.setLineWidth(1.2);
+              const noticeStartY = y;
+              doc.setFont('helvetica', 'bold');
+              doc.setFontSize(10);
+              doc.setTextColor(0, 123, 255);
+              doc.text('FixMyMacLK Warranty Notice', margin + 3, y + 6);
+              doc.setFontSize(8.5);
+              doc.setTextColor(51, 51, 51);
+              const warrantyLines = [
+                'Warranty covers manufacturer or workmanship defects only during the warranty period.',
+                '',
+                'Display Repairs:',
+                '  Covered only if touch stops working due to manufacturer fault',
+                '  Physical damage is NOT covered (cracks, lines, pressure marks, liquid damage, impact)',
+                '',
+                'Warranty is void if:',
+                '  Device is dropped, cracked, bent, or liquid damaged',
+                '  Opened or repaired by a third party',
+                '  Damage is caused by power issues or misuse',
+                '',
+                'All warranty claims are subject to inspection and approval by FixMyMacLK.',
+                'If you have a concern during your warranty period, please reach out.'
+              ];
+              let noticeY = y + 12;
+              doc.setFont('helvetica', 'normal');
+              warrantyLines.forEach(line => {
+                doc.text(line, margin + 3, noticeY);
+                noticeY += 4.2;
+              });
+              const noticeHeight = noticeY - noticeStartY + 3;
+              doc.setDrawColor(0, 123, 255);
+              doc.rect(margin, noticeStartY, pageWidth - margin * 2, noticeHeight, 'S');
+
+              doc.save(billData.fileName);
             }
           </script>
         </body>
@@ -2208,6 +2434,57 @@ const ProductRepairList = ({ darkMode }) => {
     const issueDate = new Date(repair.createdAt).toLocaleDateString('en-GB');
     const issueTime = new Date(repair.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 
+    const termsPlainText = [
+      {
+        title: '1. Your Job Sheet, Your Device\u2019s Security Tag',
+        lines: [
+          'You\u2019ll receive a job sheet when handing over your device.',
+          'Please bring this same sheet when collecting it.',
+          'This helps us protect your device and ensure a smooth, secure handover.'
+        ]
+      },
+      {
+        title: '2. Clear & Honest Diagnosis',
+        lines: [
+          'Our initial check is just a first look\u2014once we open the device, we\u2019ll confirm the exact issue and cost.',
+          'If anything changes, we\u2019ll always call you first before doing any work.',
+          'If a repair isn\u2019t safe or worth it, we\u2019ll advise you honestly.'
+        ]
+      },
+      {
+        title: '3. 3 Month Warranty for Your Peace of Mind',
+        lines: [
+          'All completed repairs come with a 3-month warranty from the date you collect the device.',
+          'The warranty covers the specific part repaired or replaced.',
+          'If any unrelated issues come up, we\u2019ll still help you with fair pricing and honest advice.'
+        ]
+      },
+      {
+        title: '4. Repair Time',
+        lines: [
+          'We\u2019ll give you the best estimate possible, and keep you updated if anything changes.',
+          'Your trust matters to us, so we communicate openly throughout the process.',
+          'If your device is beyond repair, we\u2019ll contact you to arrange collection or disposal based on your choice.'
+        ]
+      },
+      {
+        title: '5. Collection Within 14 Days',
+        lines: ['Once your repair is ready, we kindly request you collect the device within 14 days.']
+      },
+      {
+        title: '6. Payment on Collection',
+        lines: ['Payment is due when the device is collected.']
+      },
+      {
+        title: 'Special Notice for Liquid-Damaged Devices',
+        lines: [
+          'We will always try our best\u2014but liquid damage can be unpredictable.',
+          'Because corrosion spreads over time, we cannot offer warranty on these repairs.',
+          'Still, we do everything possible to restore your device safely.'
+        ]
+      }
+    ];
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -2215,8 +2492,8 @@ const ProductRepairList = ({ darkMode }) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Job Sheet - ${repair.repairInvoice || repair.repairCode}</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
         <style>
           @media print {
             * {
@@ -2509,26 +2786,150 @@ const ProductRepairList = ({ darkMode }) => {
 
         <script type="text/javascript">
           function downloadPDF() {
+            const sheetData = ${JSON.stringify({
+    jobNumber: repair.repairInvoice || repair.repairCode || "REP14",
+    issueDate: issueDate,
+    issueTime: issueTime,
+    customerName: repair.customerName || "test test",
+    device: repair.deviceType || repair.itemName || "test dev",
+    serialNumber: repair.serialNumber || "S300",
+    customerPhone: repair.customerPhone || "0774096667",
+    issueDescription: repair.issueDescription || "Battery failure",
+    checkingCharge: repair.checkingCharge || "2000",
+    estimationValue: repair.estimationValue || "5",
+    terms: termsPlainText,
+    notesText: (() => { const n = repair.additionalNotes; return (n && n.trim() !== "" && n.trim().toUpperCase() !== "N/A") ? n.trim() : "—"; })(),
+    fileName: 'JobSheet_' + (repair.repairInvoice || repair.repairCode || 'sheet') + '.pdf'
+  })};
+
             const { jsPDF } = window.jspdf;
-            const element = document.querySelector('.container');
-            html2canvas(element, {
-              scale: 2,
-              useCORS: true,
-              logging: false,
-              backgroundColor: '#ffffff'
-            }).then(canvas => {
-              const imgData = canvas.toDataURL('image/png');
-              const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4'
-              });
-              const imgProps = pdf.getImageProperties(imgData);
-              const pdfWidth = pdf.internal.pageSize.getWidth();
-              const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-              pdf.save('JobSheet_${repair.repairInvoice || repair.repairCode}.pdf');
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 15;
+            let y = 15;
+
+            // Header
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(15);
+            doc.text('FixMyMacLk', pageWidth / 2, y, { align: 'center' });
+            y += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(90, 90, 90);
+            doc.text('Your Trusted Repair Partner', pageWidth / 2, y, { align: 'center' });
+            y += 5;
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 6;
+
+            doc.setTextColor(90, 90, 90);
+            doc.setFontSize(9);
+            doc.text('FixMyMacLk Pvt Ltd', pageWidth - margin, y, { align: 'right' }); y += 4;
+            doc.text('Unit 325, 3rd Floor, Jana Jaya City Mall, 10107', pageWidth - margin, y, { align: 'right' }); y += 4;
+            doc.text('(+94)77 220 0024 / (+94)77 357 3535', pageWidth - margin, y, { align: 'right' }); y += 7;
+
+            doc.setTextColor(20, 20, 20);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('JOB SHEET', margin, y);
+            y += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(90, 90, 90);
+            doc.text('SERVICE JOB NO: ' + sheetData.jobNumber, margin, y); y += 4;
+            doc.text('DATE: ' + sheetData.issueDate, margin, y); y += 4;
+            doc.text('TIME: ' + sheetData.issueTime, margin, y); y += 6;
+            doc.setTextColor(20, 20, 20);
+
+            doc.autoTable({
+              startY: y,
+              head: [['Customer Name:', 'Device:', 'IMEI/SN:', 'Contact Number:']],
+              body: [[
+                sheetData.customerName,
+                sheetData.device,
+                sheetData.serialNumber,
+                sheetData.customerPhone
+              ]],
+              margin: { left: margin, right: margin },
+              theme: 'grid',
+              headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
+              styles: { fontSize: 8, cellPadding: 2 }
             });
+            y = doc.lastAutoTable.finalY + 4;
+
+            doc.autoTable({
+              startY: y,
+              head: [['Device Issue/Issues', 'Checking Charge', 'Estimation Value (Rs.)']],
+              body: [[
+                sheetData.issueDescription,
+                'Rs. ' + sheetData.checkingCharge,
+                'Rs. ' + sheetData.estimationValue
+              ]],
+              margin: { left: margin, right: margin },
+              theme: 'grid',
+              headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 8 },
+              styles: { fontSize: 8, cellPadding: 2 }
+            });
+            y = doc.lastAutoTable.finalY + 6;
+
+            // Terms & Conditions
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text('TERMS & CONDITIONS FOR THE REPAIR OF DEVICES', margin, y);
+            y += 5;
+            doc.setFontSize(7.5);
+            const terms = sheetData.terms;
+            terms.forEach(term => {
+              doc.setFont('helvetica', 'bold');
+              const titleLines = doc.splitTextToSize(term.title, pageWidth - margin * 2);
+              doc.text(titleLines, margin, y);
+              y += titleLines.length * 3.2;
+              doc.setFont('helvetica', 'normal');
+              term.lines.forEach(line => {
+                const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2);
+                if (y > 275) { doc.addPage(); y = 15; }
+                doc.text(wrapped, margin, y);
+                y += wrapped.length * 3.2;
+              });
+              y += 1.5;
+            });
+
+            // Additional Notes
+            if (y > 260) { doc.addPage(); y = 15; }
+            y += 2;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(20, 20, 20);
+            doc.text('Additional Notes', margin, y);
+            y += 4;
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineDashPattern([1, 1], 0);
+            doc.rect(margin, y, pageWidth - margin * 2, 16);
+            doc.setLineDashPattern([], 0);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            const notesText = sheetData.notesText;
+            const notesLines = doc.splitTextToSize(notesText, pageWidth - margin * 2 - 4);
+            doc.text(notesLines, margin + 2, y + 5);
+            y += 22;
+            doc.setTextColor(20, 20, 20);
+
+            // Signatures
+            if (y > 265) { doc.addPage(); y = 15; }
+            y += 12;
+            const sigWidth = (pageWidth - margin * 2) * 0.42;
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineDashPattern([1, 1], 0);
+            doc.line(margin, y, margin + sigWidth, y);
+            doc.line(pageWidth - margin - sigWidth, y, pageWidth - margin, y);
+            doc.setLineDashPattern([], 0);
+            doc.setFontSize(7);
+            doc.text('Customer Signature', margin + sigWidth / 2, y + 4, { align: 'center' });
+            doc.text('Authorized Signature', pageWidth - margin - sigWidth / 2, y + 4, { align: 'center' });
+
+            doc.save(sheetData.fileName);
           }
         </script>
 
