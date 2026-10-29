@@ -31,6 +31,7 @@ const CartForm = ({ supplier, item, closeModal, darkMode, refreshProducts }) => 
   const CART_FORM_STORAGE_KEY = 'cartFormDraft';
 
   const token = localStorage.getItem('token');
+  const getAuthToken = () => localStorage.getItem('token');
 
   const fetchNames = async () => {
     setLoading(true);
@@ -285,7 +286,7 @@ const CartForm = ({ supplier, item, closeModal, darkMode, refreshProducts }) => 
         const method = item ? 'PATCH' : 'POST';
         const response = await fetch(url, {
           method,
-          headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${getAuthToken()}` },
           body: JSON.stringify(itemData),
         });
 
@@ -306,7 +307,7 @@ const CartForm = ({ supplier, item, closeModal, darkMode, refreshProducts }) => 
 
         const productResponse = await fetch(url2, {
           method: method2,
-          headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${getAuthToken()}` },
           body: JSON.stringify({
             newStock: itemData.quantity,
             newBuyingPrice: itemData.buyingPrice,

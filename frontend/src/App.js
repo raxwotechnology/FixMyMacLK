@@ -91,7 +91,7 @@ const PrivateRoute = ({ children }) => {
         localStorage.removeItem('userId');
         localStorage.removeItem('username');
         localStorage.removeItem('role');
-        window.location.href = '/cashier/login'; // Force redirect
+        window.location.hash = '#/cashier/login'; // Force redirect
       }, timeout);
 
       return () => clearTimeout(logoutTimer);
