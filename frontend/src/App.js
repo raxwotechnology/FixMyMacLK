@@ -79,24 +79,34 @@ const PrivateRoute = ({ children }) => {
   // Check if token exists and is not expired
   const isValidToken = token && !isTokenExpired(token);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+useEffect(() => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       const decoded = decodeToken(token);
-      const expiryTime = decoded.exp * 1000; // in ms
-      const timeout = expiryTime - Date.now();
+      if (!decoded?.exp) return;
 
-      const logoutTimer = setTimeout(() => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('role');
-        window.location.hash = '#/cashier/login'; // Force redirect
-      }, timeout);
+      const MAX_DELAY = 2147483647; // setTimeout's 32-bit signed int limit (~24.8 days)
+      let timerId;
 
-      return () => clearTimeout(logoutTimer);
-    }
-  }, []);
+      const scheduleCheck = () => {
+              const remaining = decoded.exp * 1000 - Date.now();
+
+              if (remaining <= 0) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('userId');
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('role');
+                        window.location.hash = '#/cashier/login'; // Force redirect
+                        return;
+              }
+
+              timerId = setTimeout(scheduleCheck, Math.min(remaining, MAX_DELAY));
+      };
+
+      scheduleCheck();
+      return () => clearTimeout(timerId);
+}, []);
 
   if (!isValidToken) {
     // Clear invalid/expired token
